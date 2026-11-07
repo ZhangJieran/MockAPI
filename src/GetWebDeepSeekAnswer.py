@@ -10,6 +10,63 @@ from openai.types.chat import ChatCompletion
 
 import logging
 import time
+from collections.abc import Callable
+from urllib.parse import urlsplit
+
+
+def WaitForDeepSeekResponse(
+    page: Page, send_message: Callable[[], None], timeout: float = 300_000
+) -> None:
+    """先监听再调用 send_message，阻塞到本次 complete/completion 响应正文接收完毕。
+
+    timeout 单位为毫秒，必须大于 0；网络失败、HTTP 错误或超时会抛出异常。
+    必须把发送操作传入本函数，不能在发送后才调用，以免漏掉请求事件。
+    """
+    if timeout <= 0:
+        raise ValueError("timeout must be greater than 0")
+
+    def is_completion(request):
+        url = urlsplit(request.url)
+        return (
+            request.method == "POST"
+            and url.hostname == "chat.deepseek.com"
+            and url.path.rstrip("/").rsplit("/", 1)[-1] in ("complete", "completion")
+        )
+
+    finished = set()
+    failed = {}
+
+    def on_finished(request):
+        finished.add(request)
+
+    def on_failed(request):
+        failed[request] = request.failure
+
+    deadline = time.monotonic() + timeout / 1000
+    page.on("requestfinished", on_finished)
+    page.on("requestfailed", on_failed)
+    try:
+        # response 事件只代表响应头已到达；requestfinished 才代表流已读完。
+        with page.expect_request(is_completion, timeout=timeout) as request_info:
+            send_message()
+        request = request_info.value
+        while request not in finished:
+            if request in failed:
+                raise RuntimeError(f"DeepSeek request failed: {failed[request]}")
+            remaining = (deadline - time.monotonic()) * 1000
+            if remaining <= 0:
+                raise TimeoutError(f"DeepSeek stream did not finish within {timeout} ms")
+            # Playwright 的等待会分发网络事件，不能用 time.sleep() 替代。
+            page.wait_for_timeout(min(100, remaining))
+
+        response = request.response()
+        if response is None or not response.ok:
+            status = response.status if response is not None else "no response"
+            raise RuntimeError(f"DeepSeek completion HTTP error: {status}")
+    finally:
+        page.remove_listener("requestfinished", on_finished)
+        page.remove_listener("requestfailed", on_failed)
+
 
 def GetCurrentTagPreNum(page:Page)->int:
 # 获得当前会话的<pre>标签数量
@@ -35,7 +92,7 @@ def GetLLMResponse(page:Page,BeforeTagPreNum:int)-> None|str:
 # 当然这是指提示词层面的软约束，因此需要进行校验
 #   1.校验模型是否返回Json代码块
 #   2.校验该Json代码块是否合法，不报错，符合openai格式
-# 本函数仅确保(1)，至于(2),由另一个函数CheckLLMResponse校验
+# 本函数仅保证(1)，至于(2),由另一个函数CheckLLMResponse校验
 
 # 输入：page是当前目标页面 是Playwright Page类的实例
 #       如何判定模型是否返回Json代码块？根据BeforeTagPreNum参数
@@ -115,16 +172,17 @@ def SendToWebLLM(page:Page,Prompt:str)->bool:
 # 返回bool表示模型是否成功响应
     try:
         loc = page.locator("textarea")
-        loc.fill(Prompt)                       
-        loc.press("Enter")
-        logging.info("SendToWebLLM : Message have sent to LLM")
-        # ---AI 这里！我希望在这添加一个函数，用于判断deepseek模型是否流式输出结束 ---
+        loc.fill(Prompt)                    
+        WaitForDeepSeekResponse(page, lambda: loc.press("Enter"))
+        logging.info("SendToWebLLM : DeepSeek stream has finished")
         return True                      
-    except:
-        logging.error("SendToWebLLM : Sending message failed!")
+    except Exception:
+        logging.exception("SendToWebLLM : Sending message or waiting for response failed!")
         return False
     
 
+
+# 本模块唯一对外暴露接口
 def APIResponse(
         page    :Page,   
         RowRequest :str,    
@@ -137,19 +195,18 @@ def APIResponse(
 # TryTime 耗尽输出仍然不符合预期，报错
     if TryTimes<=0 :
         raise ValueError("TryTime<=0! You have to try one time at least")
+    Prompt:str = MakePrompt(RowRequest)
     while TryTimes:
-        Prompt:str = MakePrompt(RowRequest)
+        BeforeTagPreNum = GetCurrentTagPreNum(page)
         SendToWebLLM(page,Prompt)
-
-        
-
-        JsonResp:str = GetLLMResponse(page,GetCurrentTagPreNum(page))
+        JsonResp:str = GetLLMResponse(page,BeforeTagPreNum)
         IsValid:bool = CheckLLMResponse(JsonResp)
         if IsValid :
             return JsonResp
-        else :
-            
+        else :   
             TryTimes = TryTimes - 1
+            # 如果模型输出不符合预期，这里修改一下提示词
+            Prompt = "错误！请严格按照我的要求输出！"+MakePrompt(RowRequest)
     raise Exception(
         'The Output of LLM is always invalid, \
         please add "TryTime" or change a better model'
