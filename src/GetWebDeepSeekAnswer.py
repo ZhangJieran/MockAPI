@@ -13,7 +13,6 @@ def IsModelReturnJson()->bool:
     # 当然代码块里的代码不一定是json,这个在CheckLLMResponse会校验
     # 因此本函数仅校验是否返回代码块，当且仅当代码块数量为1 return True
     TagDSResponse = page.locator(".ds-markdown.ds-assistant-message-main-content").last
-    print(f"TagDSResponse:{len(TagDSResponse.all())}")
     TagPre = TagDSResponse.locator("pre")
     if TagPre.count() == 1 :
         return True
@@ -73,7 +72,6 @@ def GetLLMResponse()-> None|str:
     return JsonCode
 
 def CheckLLMResponse(Response:None|str)->str|None:
-    print(f"模型返回：{Response}")
 # 接收GetLLMResponse的返回值，即Response
 # 如果Response合法——非None,通过openai格式校验 return None
 # 否则 return 字符串,该字符串将拼接进Prompt，用来修正模型输出
