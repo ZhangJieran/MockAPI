@@ -1,0 +1,25 @@
+# Python 字节码
+__pycache__/
+*.py[cod]
+
+# 工具缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 虚拟环境
+.venv/
+venv/
+
+# 打包产物
+build/
+dist/
+*.egg-info/
+
+# 覆盖率
+.coverage
+htmlcov/
+
+# 编辑器
+.vscode/
+.idea/

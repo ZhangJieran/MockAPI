@@ -1,15 +1,10 @@
 # 本模块负责将模型的Web问答包装成API调用
 # 检查是否符合openai格式
 import json
-import time
 from openai.types.chat import ChatCompletion 
-from PublicVar import page,config
+from PublicVar import page
 import logging
 
-"""
-
-
-"""
 
 def IsModelReturnJson()->bool:
     # 模型返回的是气泡还是Json代码块？
@@ -33,10 +28,13 @@ def GetLLMResponse()-> None|str:
 # 系统提示词要求模型模拟api服务，返回json代码块,openai格式
 # 系统提示词如下：
 # systemPrompt:str = "
-#           请你模拟LLM api服务。我将发给你一段api请求调用,
-#           你回复我一段json格式，符合openai格式的api应答。
-#           请启用严格的格式化输出模式，我只要json，不要给我多余的东西，
-#           请返回json代码块，不要返回给我消息
+#           请你模拟LLM API服务。我将发给你一段OpenAI格式的API请求，请以Json代码块的形式回复我API响应，要求如下：
+#           1.仅包含json代码块。
+#           2.符合OpenAI规范API应答。
+#           3.请启用严格的格式化输出模式。
+#           4.我将把你的回复一字不漏地交给OpenAI pydantic模型(ChatCompletion.model_validate)做校验，请确保能通过。
+#           5.我会把你的响应转给agent,请确保agent能正常工作。
+#           模型API请求如下:" 
 #   "
 # 预期模型的回复将只包含一个json代码块
 # 当然这是指提示词层面的软约束，因此需要进行校验
