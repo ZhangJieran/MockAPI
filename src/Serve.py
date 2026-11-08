@@ -1,14 +1,23 @@
 from fastapi import FastAPI,Response,Request
 from PublicVar import RequestQue,ResponseQue
-
+import time
 import logging
-
 
 
 LocalServer = FastAPI()
 
+START_TIME = time.time()
+
+
 @LocalServer.post("/")
 async def GetClaudeCodePost(request:Request):
+    now = time.time()
+    if now-START_TIME<3:
+        return Response(
+            status_code=404
+        )
+    
+    
     # 拿到请求体
     body_bytes = await request.body()  
     body:str = body_bytes.decode("utf-8")

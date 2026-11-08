@@ -6,19 +6,29 @@ from openai.types.chat import ChatCompletion
 from PublicVar import page,config
 import logging
 
-
-def GetCurrentTagPreNum()->int:
-# 获得当前会话的<pre>标签数量
-# 设计原因是希望在给模型发消息前，先获取<pre>数量
-# 再把这个数量传给GetLLMResponse的BeforeTagPreNum
-# 用于判断模型是否按照预期返回Json代码块
-# GetCurrentTagPreNum() ->给模型发消息()->GetLLMResponse()
-    global page
-    TagPre = page.locator("pre")
-    return len( TagPre.all() )
+"""
 
 
-def GetLLMResponse(BeforeTagPreNum:int)-> None|str:
+"""
+
+def IsModelReturnJson()->bool:
+    # 模型返回的是气泡还是Json代码块？
+    # 判断标准就是DS回复里有没有<pre>
+    # 文字是<span>,代码块是<pre>
+    # 当然代码块里的代码不一定是json,这个在CheckLLMResponse会校验
+    # 因此本函数仅校验是否返回代码块，当且仅当代码块数量为1 return True
+    TagDSResponse = page.locator(".ds-markdown.ds-assistant-message-main-content").last
+    print(f"TagDSResponse:{len(TagDSResponse.all())}")
+    TagPre = TagDSResponse.locator("pre")
+    if TagPre.count() == 1 :
+        return True
+    else : 
+        return False
+
+    
+
+
+def GetLLMResponse()-> None|str:
 # 爬虫抓取模型回复
 # 系统提示词要求模型模拟api服务，返回json代码块,openai格式
 # 系统提示词如下：
@@ -35,23 +45,20 @@ def GetLLMResponse(BeforeTagPreNum:int)-> None|str:
 # 本函数仅保证(1)，至于(2),由另一个函数CheckLLMResponse校验
 
 # 输入：page是当前目标页面 是Playwright Page类的实例
-#       如何判定模型是否返回Json代码块？根据BeforeTagPreNum参数
-#       其语义是当前会话，截止上一轮对话(不算本轮对话产生的<pre>)一共有多少<pre>
-#       如果当前页面的TagPreNum和BeforeTagNum一样则模型未按要求返回Json代码块
-# 输出：1.模型返回Json代码块：
+#       如何判定模型是否返回代码块？IsModelReturnJson()
+# 输出：1.模型返回代码块：
 #           以str形式返回这个Json代码
-#       2.模型未返回Json代码块：
+#       2.模型未返回代码块：
 #           return None
 
     global page
-    # step1 : 检查模型是否按要求返回Json代码块
-    #判断标准：<pre>标签数目是否更新
-    TagPre = page.locator("pre")
-    CurTagPreNum:int = len(TagPre.all())
-    if CurTagPreNum == BeforeTagPreNum:
+    # step1 : 检查模型是否按要求返回1个代码块
+    if not IsModelReturnJson():
+        print("模型未返回或返回多个Jsno块")
         return None
-    
-    TagPre = TagPre.last
+    print("模型返回Jsno块")
+    TagDSResponse = page.locator(".ds-markdown.ds-assistant-message-main-content").last
+    TagPre = TagDSResponse.locator("pre").last
     # 抓取外层span标签   外层span标签是json代码的一行
     OuterTagSpan = TagPre.locator("span")
     OuterTagSpanList = OuterTagSpan.all()
@@ -68,6 +75,7 @@ def GetLLMResponse(BeforeTagPreNum:int)-> None|str:
     return JsonCode
 
 def CheckLLMResponse(Response:None|str)->str|None:
+    print(f"模型返回：{Response}")
 # 接收GetLLMResponse的返回值，即Response
 # 如果Response合法——非None,通过openai格式校验 return None
 # 否则 return 字符串,该字符串将拼接进Prompt，用来修正模型输出
@@ -111,18 +119,27 @@ def MakePrompt(request:str)->str:
     return  SystemPrompt+request
 
 
+def __predictate(request)->bool:
+    # page.wait_for_event()的predictate参数
+    # 如果该请求是completion请求，返回True
+    if "/api/v0/chat/completion" in request.url:
+        return True
+    else :
+        return False
+
 def SendToWebLLM(Prompt:str)->bool:
-# 用于给模型发送消息，Prompt会直接原样写入输入框发给模型
+# 用于给模型发送消息，Prompt会直接原样写入输入框并按'Enter'键发给模型
 # 因此Prompt应为加工后的请求，请确保其被 MakePrompt 加工过
 # 返回bool表示模型是否成功响应
+# 本函数保证消息发出且模型已经回复消息,至于返回了什么,交给CheckLLMResponse检验
     global page
     try:
         loc = page.locator("textarea")
         loc.fill(Prompt)                    
         loc.press("Enter")
-        # TODO: 这里为了确保模型输出完后，再爬取结果，需要sleep等待一段时间
-        # 但这种方法不仅不稳定，也浪费时间，需要优化
-        time.sleep(config["WaitTime"])
+        # 等待completion请求响应体
+        page.wait_for_event("requestfinished",__predictate)
+        print("deepseek已回复")
         return True                      
     except Exception:
         logging.exception("SendToWebLLM : Sending message or waiting for response failed!")
@@ -144,14 +161,15 @@ def APIResponse(
         raise ValueError("TryTime<=0! You have to try one time at least")
     Prompt:str = MakePrompt(RowRequest)
     while TryTimes:
-        BeforeTagPreNum = GetCurrentTagPreNum()
+        # step1 保证消息发出并且模型已经回复
         if not SendToWebLLM(Prompt):
             TryTimes -= 1
             continue
-        JsonResp:str = GetLLMResponse(BeforeTagPreNum)
+        # step2 保证模型回复的消息符合预期
+        JsonResp:str = GetLLMResponse()
         IsValid:None|str = CheckLLMResponse(JsonResp)
         # IsValid为None说明模型返回的API响应通过
-        # 否则，根据错误类型修正提示词
+        # 否则，根据错误类型修正提示词。让模型重新生成
         if IsValid==None :
             return JsonResp
         else :   
