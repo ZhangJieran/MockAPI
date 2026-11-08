@@ -4,12 +4,12 @@ import time
 import logging
 
 
-LocalServer = FastAPI()
+LocalService = FastAPI()
 
 START_TIME = time.time()
 
 
-@LocalServer.post("/")
+@LocalService.post("/")
 async def GetClaudeCodePost(request:Request):
     now = time.time()
     if now-START_TIME<3:
