@@ -78,7 +78,7 @@ CC Switch --- Anthropic格式API响应 --> ClaudeCode
 
  <br>
 
-分为爬虫`./src/Crawler/` 和 后端`./BackendService/` 两部分<br>
+分为爬虫`./src/Crawler/` 和 后端`./src/BackendService/` 两部分<br>
 重点更改爬虫部分：<br>
 采用建造者设计模式构建爬虫实例，增加基类 `./src/Crawler/CrawlerManager.py`:
 

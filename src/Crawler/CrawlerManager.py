@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright, Page
 from ..Public import logging
 
 
-# 建造者模式，构造 ModelCrawlerManager 管理不同模型Web端的爬虫抓取
+# 建造者模式，构造 CrawlerManager 管理不同模型Web端的爬虫抓取
 
 @dataclass
 class CrawlerConfig():
@@ -35,7 +35,7 @@ class CrawlerConfig():
 
 
 class CrawlerBuilder():
-    # 请先使用 `所有SetXXX()`，最后使用 `Build()`
+    # 构建CrawManager实例时，先使用所有 `SetXXX()`，最后使用 `Build()`
     # `Setxxx()`原本设计返回None,但为了支持链式调用，返回self
     def __init__(self):
         self.config:CrawlerConfig = CrawlerConfig()
@@ -117,6 +117,7 @@ class CrawlerManager():
         self.CurContinuousChat = 0
 
     def _IsOver(self)->bool:
+        # 判断是否超过阈值
         return ( 
            self.CurSessionChat       >= self.MaxSessionChat   
            or self.CurSessionToken   >= self.MaxSessionToken  

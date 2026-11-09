@@ -72,7 +72,7 @@ class DeepseekCrawlerManager(CrawlerManager):
         # 当然这是指提示词层面的软约束，因此需要进行校验
         #   1.校验模型是否返回Json代码块
         #   2.校验该Json代码块是否合法，不报错，符合openai格式
-        # 本函数仅保证(1)，至于(2),由另一个函数CheckLLMResponse校验
+        # 本函数仅保证(1)，至于(2),由另一个函数_CheckResponse校验
 
         # 输入：page是当前目标页面 是Playwright Page类的实例
         #       如何判定模型是否返回代码块？IsModelReturnJson()
@@ -86,7 +86,7 @@ class DeepseekCrawlerManager(CrawlerManager):
             # 模型返回的是气泡还是Json代码块？
             # 判断标准就是DS回复里有没有<pre>
             # 文字是<span>,代码块是<pre>
-            # 当然代码块里的代码不一定是json,这个在CheckLLMResponse会校验
+            # 当然代码块里的代码不一定是json,这个在_CheckResponse会校验
             # 因此本函数仅校验是否返回代码块，当且仅当代码块数量为1 return True
             TagDSResponse = self.page.locator(".ds-markdown.ds-assistant-message-main-content").last
             TagPre = TagDSResponse.locator("pre")
