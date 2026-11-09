@@ -1,5 +1,5 @@
 from fastapi import FastAPI,Response,Request
-from PublicVar import RequestQue,ResponseQue
+from PythonScripts.src.Public import RequestQue,ResponseQue
 import time
 import logging
 

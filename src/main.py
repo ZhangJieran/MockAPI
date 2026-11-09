@@ -1,7 +1,7 @@
 import uvicorn
-from GetWebDeepSeekAnswer import *
+from PythonScripts.src.Crawler.DeepseekCrawlerManager import *
 import threading
-from PublicVar import RequestQue,ResponseQue,config
+from PythonScripts.src.Public import RequestQue,ResponseQue,config
 from BackendService import LocalService
 
 
@@ -22,7 +22,7 @@ def main():
         # 等待后端发来请求，没有就阻塞等待
         RequestJson = RequestQue.get()
         # APIResponse处理结果返回给后端
-        Response = APIResponse(RequestJson,config["TryTime"])
+        Response = GetAPI(RequestJson,config["TryTime"])
         ResponseQue.put(Response)
 
 

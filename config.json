@@ -1,5 +1,7 @@
 {
     "BaseURL" : "https://chat.deepseek.com",
     "BackendPort" : 1000,
-    "TryTime":5
+    "TryTime":5,
+    "SleepTime":1,
+    "ContinuousWaitTime":10
 }
