@@ -2,8 +2,8 @@ import json
 import time
 from openai.types.chat import ChatCompletion
 from ..Public import logging
-from CrawlerManager import *
-from utils import MakePrompt
+from .CrawlerManager import *
+from .utils import MakePrompt
 
 
 # deepseek没有新增新的config配置，直接继承基类的
@@ -14,8 +14,8 @@ class DeepseekCrawlerBuilder(CrawlerBuilder):
 
 
 class DeepseekCrawlerManager(CrawlerManager):
-    def __init__(self):
-        super().__init__()
+    def __init__(self,config:CrawlerConfig):
+        super().__init__(config)
         self.ManagerName = "DeepSeek"
 
     def __create_new_chat_session(self)->None:
@@ -29,7 +29,7 @@ class DeepseekCrawlerManager(CrawlerManager):
         if self.CurContinuousChat>self.MaxContinuousChat:
             time.sleep(self.RestTime)
     
-    def __predictate(request)->bool:
+    def __predictate(self,request)->bool:
         # page.wait_for_event()的predictate参数
         # 如果该请求是completion请求，返回True
         if "/api/v0/chat/completion" in request.url:
@@ -38,6 +38,7 @@ class DeepseekCrawlerManager(CrawlerManager):
             return False
 
     def _Send(self,Request)->int:
+        time.sleep(3)
         # 用于给模型发送消息，Prompt会直接原样写入输入框并按'Enter'键发给模型
         # 因此Prompt应为加工后的请求，请确保其被 MakePrompt 加工过
         Prompt:str = MakePrompt(Request)
@@ -46,12 +47,13 @@ class DeepseekCrawlerManager(CrawlerManager):
             loc.fill(Prompt)                    
             loc.press("Enter")
             # 等待completion请求响应体
-            self.page.wait_for_event("requestfinished",self.__predictate)
+            self.page.wait_for_event("requestfinished", predicate=self.__predictate)
             logging.info(f"{self.ManagerName}CrawlerManager : Have Sent to Model")
-            return True                      
-        except Exception:
+            return len(Prompt)                    
+        except Exception as e:
+            print(e)
             logging.warning(f"{self.ManagerName}CrawlerManager : Sending Prompt to Model Failed!")
-            return False
+            return 0
 
     def _GetResponse(self)->str|None:
         # 爬虫抓取模型回复

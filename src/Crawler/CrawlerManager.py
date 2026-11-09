@@ -1,8 +1,7 @@
 import time
 from dataclasses import dataclass
 from playwright.sync_api import sync_playwright, Page 
-
-from Public import logging
+from ..Public import logging
 
 
 # 建造者模式，构造 ModelCrawlerManager 管理不同模型Web端的爬虫抓取
@@ -27,7 +26,7 @@ class CrawlerConfig():
     CurContinuousChat:int = 0
     MaxContinuousChat:int = -1
     # 每次给模型发prompt的间隔时间（s），防止请求频率太快
-    Interval = 0
+    IntervalTime = 0
     # 每次大休息的休息时间(s)
     RestTime = 0
 
@@ -67,7 +66,7 @@ class CrawlerBuilder():
         self.config.MaxContinuousChat = MaxContinuousChat
         return self
     def SetIntervalTime(self,time:int)->"CrawlerBuilder":
-        self.config.Interval = time
+        self.config.IntervalTime = time
     def SetRestTime(self,time:int)->"CrawlerBuilder":
         self.config.RestTime = time
     
@@ -86,6 +85,7 @@ class CrawlerManager():
     #           -- no -->给模型发消息_Send()->抓取模型回复_GetResponse()->校验回复_CheckResponse()->更新数据_Update()                        
     # 必须实现以上提及的方法，GetAPIResponse()已经把以上方法组合流程框架搭好
     # 以上所有方法，除了GetAPIResponse()，均实现错误处理逻辑，保证不会报错
+    # 本类唯一对外暴露接口 GetAPIResponse() 只需调用一下，启动爬虫全链路，并返回伪造的，字符串json形式的API 响应
     
     # 类级注解：让静态分析器认识 self.page 等属性（不产生运行时属性）
     page         : Page | None
