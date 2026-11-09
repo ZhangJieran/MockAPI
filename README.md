@@ -27,7 +27,7 @@ uv sync
 
 |配置项|配置方法
 |---|---
-|请求地址|http://localhost:xxxx<br>请把"请求地址"指向本项目后端服务，端口号与后端服务端口一致<br><a href="./config.json">👉更改后端端口</a> 
+|请求地址|http://localhost:xxxx<br>请把"请求地址"指向本项目后端服务，端口号与后端服务端口一致（1000）<br>
 |高级选项->上游格式|Open Chat Completions(需开启路由)
 |高级选项->完整URL|开启
 
@@ -67,3 +67,34 @@ CC Switch --- Anthropic格式API响应 --> ClaudeCode
 
 <br><br><br>
 
+
+
+
+## 更新日志
+
+---
+
+### 2026/11/9 架构升级，增强可扩展性
+
+ <br>
+
+分为爬虫`./src/Crawler/` 和 后端`./BackendService/` 两部分<br>
+重点更改爬虫部分：<br>
+采用建造者设计模式构建爬虫实例，增加基类 `./src/Crawler/CrawlerManager.py`:
+
+- `CrawlerConfig` 
+- `CrawlerBuilder`
+- `CrawlerManager`
+
+并实现Deepseek特化版本`DeepseekCrawlerManager`
+
+
+<br><br>
+一些边角改动，增强程序稳定性<br>
+计划未来适配更多模型Web端
+
+---
+
+### 2026/11/8
+
+项目第一版demo上线
