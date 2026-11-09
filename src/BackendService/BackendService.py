@@ -1,7 +1,7 @@
 from fastapi import FastAPI,Response,Request
 import time
 import logging
-from .Public import RequestQue,ResponseQue
+from ..Public import RequestQue,ResponseQue
 
 
 LocalService = FastAPI()

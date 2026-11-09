@@ -201,6 +201,7 @@ class CrawlerManager():
                 self._Update(Token)
                 Token = 0 
                 continue
+            self._Update(Token)
             return APIResponse
         raise Exception("Tried Too Many Times Without Getting One Expected Answer")
             

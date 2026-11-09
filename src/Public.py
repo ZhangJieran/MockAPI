@@ -8,7 +8,7 @@ import logging
 
 # 设置日志打印
 logging.basicConfig(
-    level=logging.INFO
+    level=logging.WARNING
 )
 
 #爬虫与FastAPI后端的通信通道

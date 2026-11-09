@@ -128,10 +128,10 @@ class DeepseekCrawlerManager(CrawlerManager):
             PyJson = json.loads(APIResponse)
             ChatCompletion.model_validate(PyJson)
         except json.JSONDecodeError:
-            logging.warning("CheckLLMResponse : The output of model is not valid Json")
+            logging.warning(f"{self.ManagerName}CrawlerManager: The output of model is not valid Json")
             return False
         except Exception:
-                logging.warning("CheckLLMResponse : The output of model is not valid OpenAI response")
+                logging.warning(f"{self.ManagerName}CrawlerManager : The output of model is not valid OpenAI response")
                 return False
         logging.info(f"{self.ManagerName}CrawlerManager : Pass Reply Check")
         return True

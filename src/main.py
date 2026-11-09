@@ -1,7 +1,7 @@
 import uvicorn
 import threading
 from .Public import RequestQue,ResponseQue
-from .BackendService import LocalService
+from .BackendService.BackendService import LocalService
 from .Crawler.DeepseekCrawlerManager import *
 
 def BackendServiceFunc():
@@ -23,9 +23,9 @@ def main():
     DeepseekBuilder.SetPage()
     DeepseekBuilder.SetBaseUrl("https://chat.deepseek.com")
     DeepseekBuilder.SetMaxSessionChat(5)
-    DeepseekBuilder.SetMaxSessionToken(1000000)
-    DeepseekBuilder.SetMaxContinuousChat(5)
-    DeepseekBuilder.SetIntervalTime(2)
+    DeepseekBuilder.SetMaxSessionToken(900000)
+    DeepseekBuilder.SetMaxContinuousChat(10)
+    DeepseekBuilder.SetIntervalTime(1)
     DeepseekBuilder.SetRestTime(10)
     DeepseekBluePrint = DeepseekBuilder.Build()
     Deepseek = DeepseekCrawlerManager(DeepseekBluePrint)
